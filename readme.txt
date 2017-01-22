@@ -1,6 +1,6 @@
 === Pick Giveaway Winner ===
 Contributors: jennettefulda
-Donate link: http://makemyblogpretty.com/plugins
+Donate link: https://www.makeworthymedia.com/plugins/
 Tags: giveaway,give away,winner,winners,contest,draw,prize,prizes,random,random number
 Requires at least: 3.0
 Tested up to: 4.3
@@ -38,7 +38,7 @@ It may seem counterintuitive, but if you re-run the plugin on the same post and 
 
 = This is awesome! Can I send you money? =
 
-Sure! Go to my plugin page at http://makemyblogpretty.com/plugins to donate.
+Sure! Go to my plugin page at https://www.makeworthymedia.com/plugins/ to donate.
 
 = Would you like to thank anyone? =
 

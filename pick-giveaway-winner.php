@@ -5,11 +5,11 @@
  */
 /*
 Plugin Name: Pick Giveaway Winner
-Plugin URI: http://makemyblogpretty.com/plugins/pick-giveaway-winner/
+Plugin URI: https://www.makeworthymedia.com/plugins/pick-giveaway-winner/
 Description: Randomly select a winner or winners from the comments of a giveaway post. To choose a winner, go to Tools -> Pick Giveaway Winner or <a href="tools.php?page=pick-giveaway-winner">click here</a>.
 Author: Jennette Fulda
 Version: 1.1
-Author URI: http://makemyblogpretty.com/
+Author URI: https://www.makeworthymedia.com/
 License: GPL2
 */
 
