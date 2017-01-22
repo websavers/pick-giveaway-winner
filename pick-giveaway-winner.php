@@ -13,7 +13,7 @@ Author URI: https://www.makeworthymedia.com/
 License: GPL2
 */
 
-/*  Copyright 2010 Jennette Fulda  (email : please@makemyblogpretty.com)
+/*  Copyright 2010 Jennette Fulda  (email : contact@makeworthymedia.com)
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License, version 2, as 
