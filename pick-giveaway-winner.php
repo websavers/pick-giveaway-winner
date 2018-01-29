@@ -1,14 +1,14 @@
 <?php
 /**
  * @package Pick_Giveaway_Winner
- * @version 1.1
+ * @version 1.3
  */
 /*
 Plugin Name: Pick Giveaway Winner
 Plugin URI: https://www.makeworthymedia.com/plugins/
-Description: Randomly select a winner or winners from the comments of a giveaway post. To choose a winner, go to Tools -> Pick Giveaway Winner or <a href="tools.php?page=pick-giveaway-winner">click here</a>.
+Description: Randomly select a winner or winners from the comments of a giveaway post. To choose a winner from your most recent 100 posts, go to Tools -> Pick Giveaway Winner or <a href="tools.php?page=pick-giveaway-winner">click here</a>.
 Author: Makeworthy Media
-Version: 1.1
+Version: 1.3
 Author URI: https://www.makeworthymedia.com/
 License: GPL2
 */
@@ -129,7 +129,7 @@ function pgw_options() {
 ?>
   <div class="wrap">
   	<h2>Pick Giveaway Winner</h2>
-  	<p>This plugin allows you to randomly select a winner or winners from the comments of a giveaway post.</p>
+  	<p>This plugin allows you to randomly select a winner or winners from the comments of a giveaway post. It only lists the 100 most recent posts to reduce strain on your server.</p>
   	
   	<form name="pgw_form" id="pgw_form" action="" method="post">
 		<p><label>Select entry:</label>
@@ -155,18 +155,32 @@ function pgw_options() {
 
 /* Prints dropdown list of all published posts */
 function pgw_get_entries_dropdown($entry_id) {
-	global $wpdb;
-	$published = $wpdb->get_results($wpdb->prepare("SELECT ID, post_title FROM $wpdb->posts WHERE post_status = 'publish' and post_type = 'post' ORDER BY post_date DESC"));
 
+	$args = array(
+		'post_status' => 'publish',
+		'post_type' => 'post',
+		'orderby' => 'date',
+		'order' => 'DESC',
+		'posts_per_page' => 100,
+	);
+	
+	$the_query = new WP_Query($args);
 	$entry_options = "";
-	foreach ($published as $publish) {
-		$entry_options .= "<option value='$publish->ID'";
-		if ($entry_id==$publish->ID) {
-			$entry_options .= " selected";
+	
+	if ( $the_query->have_posts() ) {
+		while ( $the_query->have_posts() ) {
+			$the_query->the_post();
+			
+			$selected = '';
+			if ($entry_id == get_the_ID() ) {
+				$selected .= " selected";
+			}
+			
+			$entry_options .= sprintf("<option value='%s'%s>%s</option>\n", get_the_ID(), $selected, get_the_title() );
 		}
-		$entry_options .= ">$publish->post_title</option>\n";
 	}
-
+	wp_reset_postdata();
+	
 	echo $entry_options;
 }
 
@@ -174,11 +188,12 @@ function pgw_get_entries_dropdown($entry_id) {
 function pgw_get_number_winners_dropdown($num_winners) {
 	$num_winner_options ="";
 	for($i = 1; $i <= 50; $i++) {
-		$num_winner_options .= "<option";
+		$selected = '';
 		if ($num_winners==$i) {
-			$num_winner_options .= " selected";
+			$selected .= " selected";
 		}
-		$num_winner_options .= ">$i</option>\n";
+
+		$num_winner_options .= sprintf("<option%s>%s</option>\n", $selected, $i);
 	}
 	
 	echo $num_winner_options;

@@ -3,14 +3,14 @@ Contributors: jennettefulda
 Donate link: https://www.makeworthymedia.com/plugins/
 Tags: giveaway,give away,winner,winners,contest,draw,prize,prizes,random,random number
 Requires at least: 3.0
-Tested up to: 4.3
-Stable tag: 1.1
+Tested up to: 4.9.2
+Stable tag: 1.3
 
-Randomly select a winner or winners from the comments of a giveaway post.
+Randomly select a winner or winners from the comments of a giveaway post. 
 
 == Description ==
 
-This plugin randomly selects a winner or winners from the comments of a giveaway post. You can also disqualify people who've entered more than once (determined by email), or reduce their entries to only one. The plugin uses MySQL's random function RAND() to randomly select the winners directly from the database.
+This plugin randomly selects a winner or winners from the comments of a giveaway post. It only lists the 100 most recent posts to reduce strain on your server. You can disqualify people who've entered more than once (determined by email), or reduce their entries to only one. The plugin uses MySQL's random function RAND() to randomly select the winners directly from the database. 
 
 == Installation ==
 
@@ -36,6 +36,10 @@ The more comments your post has, the longer it will take to parse the data and d
 
 It may seem counterintuitive, but if you re-run the plugin on the same post and occasionally get the same winner, this proves that the plugin actually is random. For example, if you roll a dice several times you will eventually get the same number twice in a row. The same thing happens with the plugin. However, if you run the plugin several times in a row and keep getting the same winner, that could indicate a problem.
 
+= Why can I only run this plugin on the 100 most recent posts? =
+
+This is done to reduce strain on the server and avoid problems that occurred when people had more than a thousand posts. Most giveaways should be done by the time you've posted 100 more posts, so this shouldn't cause problems for most people.
+
 = This is awesome! Can I send you money? =
 
 Sure! Go to my plugin page at https://www.makeworthymedia.com/plugins/ to donate.
@@ -49,6 +53,9 @@ Yes, I would! Thanks to Roni Noone at http://www.roninoone.com/ for beta testing
 1. This is how the winner selection screen looks right after you've chosen a winner or winners.
 
 == Changelog ==
+
+= 1.3 =
+* Changed the way the dropdown list of posts is generated and limited it to the most recent 100 posts to avoid trouble people were having if they had more than a thousand posts.
 
 = 1.1 =
 * Removed wpdb::prepare() errors you might see when running the plugin in Wordpress 3.5 and up.
