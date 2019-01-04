@@ -1,2 +1,3 @@
-# pick-giveaway-winner
-WordPress plugin to randomly select a winner or winners from the comments of a giveaway post.
+# Pick Giveaway Winner from WPForms
+- WordPress plugin to randomly select a winner or winners from WPForms Entries
+- Modified from the comment-based selection system here: https://wordpress.org/plugins/pick-giveaway-winner/
