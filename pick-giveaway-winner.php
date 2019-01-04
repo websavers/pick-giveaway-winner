@@ -4,12 +4,12 @@
  * @version 1.3
  */
 /*
-Plugin Name: Pick Giveaway Winner
+Plugin Name: Pick Giveaway Winner for WPForms
 Plugin URI: https://www.makeworthymedia.com/plugins/
-Description: Randomly select a winner or winners from the comments of a giveaway post. To choose a winner from your most recent 100 posts, go to Tools -> Pick Giveaway Winner or <a href="tools.php?page=pick-giveaway-winner">click here</a>.
-Author: Makeworthy Media
-Version: 1.3
-Author URI: https://www.makeworthymedia.com/
+Description: Randomly select a winner or winners from the entrants of a WPForms form. To choose a winner go to WPForms -> Pick Giveaway Winner.
+Author: Websavers Inc.
+Version: 1.0
+Author URI: https://websavers.ca/
 License: GPL2
 */
 
@@ -32,7 +32,7 @@ License: GPL2
 add_action('admin_menu', 'pgw_menu');
 
 function pgw_menu() {
-	add_management_page('Pick Giveaway Winner Options', 'Pick Giveaway Winner', 'manage_options', 'pick-giveaway-winner', 'pgw_options');
+	add_submenu_page('admin.php?page=wpforms-overview', 'Pick Giveaway Winner Options', 'Pick Giveaway Winner', 'manage_options', 'pick-giveaway-winner', 'pgw_options');
 }
 
 function pgw_options() {
@@ -43,74 +43,46 @@ function pgw_options() {
 	}
 
 	// If someone submitted the form, select the giveaway winners
-	if( is_numeric($_POST['pgw-entry-id']) && is_numeric($_POST['pgw-num-winners']) && is_numeric($_POST['pgw-dupes']) ) {
+	if( is_numeric($_POST['pgw-entry-id']) && is_numeric($_POST['pgw-num-winners']) ) {
 
-		// Get the winning comments on the selected post
+		// Get the winning form entries from the selected form
 		
-		if ($_POST['pgw-dupes']==3) {
-			// Multiple entries allowed
-			$winners = $wpdb->get_results($wpdb->prepare("SELECT comment_author, comment_author_email FROM $wpdb->comments WHERE comment_post_ID = %d AND comment_approved = 1 ORDER BY RAND() LIMIT %d", $_POST['pgw-entry-id'], $_POST['pgw-num-winners']));
+		$form = wpforms()->form->get( absint( $_POST['pgw-entry-id'] ) );
+		if ( empty( $form ) ) {
+			return;
 		}
 		
-		if ($_POST['pgw-dupes']==2) {
-			// Removes multiple emails, but keeps 1 entry for the email in question
-			$winners = $wpdb->get_results($wpdb->prepare("SELECT comment_author, comment_author_email FROM $wpdb->comments WHERE comment_post_ID = %d AND comment_approved = 1 GROUP BY comment_author_email ORDER BY RAND() LIMIT %d", $_POST['pgw-entry-id'], $_POST['pgw-num-winners'] ));
-		}
-
-		if ($_POST['pgw-dupes']==1) {
-			// Removes any duplicant entrants from the winners list
-			$winners = $wpdb->get_results($wpdb->prepare("SELECT comment_author, comment_author_email FROM $wpdb->comments WHERE comment_post_ID = %d AND comment_approved = 1 GROUP BY comment_author_email ORDER BY RAND()", $_POST['pgw-entry-id'])); // gets ALL comments on the entry
-			
-			// Get list of all duplicate emails
-			$losers = $wpdb->get_results($wpdb->prepare("SELECT comment_author_email, COUNT(*) c FROM $wpdb->comments WHERE comment_post_ID = %d AND comment_approved = 1 GROUP BY comment_author_email HAVING COUNT(*)>1", $_POST['pgw-entry-id']));
-
-			// Save hash of ineligible winners
-			$disqualified = array();
-			foreach ($losers as $loser) {
-				$disqualified[$loser->comment_author_email] = 1;
-			}
-		}
+		$form_data = !empty( $form->post_content ) ? wpforms_decode( $form->post_content ) : '';
+		
+		//$winners = $wpdb->get_results($wpdb->prepare("SELECT fields FROM $wpdb->wpforms_entries WHERE form_id = %d ORDER BY RAND() LIMIT %d", $_POST['pgw-entry-id'], $_POST['pgw-num-winners']));
+		$entries   = wpforms()->entry->get_entries( array( 'form_id' => absint( $_POST['pgw-entry-id'] ), 'number' => $_POST['pgw-num-winners'], 'order' => 'ASC', 'orderby' => 'rand' ) );
 			
 		$winners_text="";
 		$count = 1;
-		foreach ($winners as $winner) {
-			// If we're eliminating duplicates, check to see if this email is a dupe.
-			if ( ($_POST['pgw-dupes']==1) && ($disqualified[$winner->comment_author_email]==1) ) {
-				continue;		
+		$winners = array();
+		foreach ($entries as $entry) {
+			$fields = wpforms_decode( $entry->fields );
+			foreach( $fields as $field ) {
+				$winners[$count] = array( $field['name'] => wp_strip_all_tags($field['value']) );
 			}
-			$winners_text .= "<p>$count) $winner->comment_author: <a href='mailto:$winner->comment_author_email'>$winner->comment_author_email</a></p>\n";
 			$count++;
-			// If we're eliminating duplicates, stop loop once we've reached the limit of winners
-			if ( ($_POST['pgw-dupes']==1) && ($count > $_POST['pgw-num-winners']) ) {
-				break;
-			}
-		}		
-
-		// If the number of winners is greater than the number of comments, send alert to screen
-		if ($count <= $_POST['pgw-num-winners']) {
-			$winners_text .= "<p><strong>There were no more comments on this entry!</strong></p>";
 		}
+		foreach ( $winners as $count => $winner ){
+			$winners_text .= "<p>$count) {$winner['Name']}: <a href='mailto:{$winner['Email']}'>{$winner['Email']}</a></p>\n";
+		}	
 
-		// Lists emails of duplicate entrants
-		if ($_POST['pgw-dupes']==1) {
-			//if (count($disqualified) > 0) {
-				$addresses = array();
-				$winners_text .= "<p><strong>" . count($disqualified) ." email addresses were eliminated because of multiple entries:</strong> ";
-				foreach ($losers as $loser) {
-					//$winners_text .= "$loser->comment_author_email, ";
-					array_push($addresses, $loser->comment_author_email);
-				}
-				$winners_text .= join(", ", $addresses);
-				$winners_text .= "</p>";
-			//}
-		}			
+		// If the number of winners is greater than the number of entries, send alert to screen
+		if ($count <= $_POST['pgw-num-winners']) {
+			$winners_text .= "<p><strong>There were no more entries for this form!</strong></p>";
+		}	
 
-		// Get title of post you selected winners from
-		$winning_post = $wpdb->get_results($wpdb->prepare("SELECT * FROM $wpdb->posts WHERE ID = %d", $_POST['pgw-entry-id']));
+		// Get title of form
+		//$winning_post = $wpdb->get_results($wpdb->prepare("SELECT * FROM $wpdb->posts WHERE ID = %d", $_POST['pgw-entry-id']));
+		$form_title = $form_data['title']; //Not sure about this.
 
 	// Put an settings updated message on the screen
 ?>
-	<div class="updated"><p><strong>Your <?php echo($_POST['pgw-num-winners']); ?> winners on "<?php echo($winning_post[0]->post_title); ?>" are:</strong></p>
+	<div class="updated"><p><strong>Your <?php echo($_POST['pgw-num-winners']); ?> winners on "<?php echo($form_title); ?>" are:</strong></p>
 		<?php echo $winners_text; ?></p></div>
 <?php
 
@@ -129,12 +101,12 @@ function pgw_options() {
 ?>
   <div class="wrap">
   	<h2>Pick Giveaway Winner</h2>
-  	<p>This plugin allows you to randomly select a winner or winners from the comments of a giveaway post. It only lists the 100 most recent posts to reduce strain on your server.</p>
+  	<p>This plugin allows you to randomly select a winner or winners from the entries of a WPForm.</p>
   	
   	<form name="pgw_form" id="pgw_form" action="" method="post">
-		<p><label>Select entry:</label>
+		<p><label>Select Form:</label>
 			<select name="pgw-entry-id">
-				<?php pgw_get_entries_dropdown($saved_entry_id); ?>
+				<?php pgw_get_forms_dropdown($saved_entry_id); ?>
 			</select></p>
 			
 		<p><label>How many winners?</label>
@@ -142,20 +114,15 @@ function pgw_options() {
 				<?php pgw_get_number_winners_dropdown($saved_num_winners); ?>
 			</select>
 		</p>
-		<p><label>How should we handle multiple entries (by email address)?:</label></p>
-		<p><input type="radio" name="pgw-dupes" id="pgw-dupes-1" value="1"<?php if ($_POST['pgw-dupes']==1 || !isset($_POST['pgw-dupes'])) : ?> checked<?php endif; ?>> <label for="pgw-dupes-1">Disqualify multiple entrant from drawing completely</label>
-			<br /><input type="radio" name="pgw-dupes" id="pgw-dupes-2" value="2"<?php if ($_POST['pgw-dupes']==2) : ?> checked<?php endif; ?>> <label for="pgw-dupes-2">Discard multiple entries, but allow the entrant a single entry</label>
-			<br /><input type="radio" name="pgw-dupes" id="pgw-dupes-3" value="3"<?php if ($_POST['pgw-dupes']==3) : ?> checked<?php endif; ?>> <label for="pgw-dupes-3">Allow multiple entries</label>
-		</p>
 		<p><input type="submit" value="Pick winners!"></p>
   	</form>
   </div>
 <?php 
 }
 
-/* Prints dropdown list of all published posts */
-function pgw_get_entries_dropdown($entry_id) {
-
+/* Prints dropdown list of all forms */
+function pgw_get_forms_dropdown($entry_id) {
+	
 	$args = array(
 		'post_status' => 'publish',
 		'post_type' => 'post',
@@ -164,22 +131,20 @@ function pgw_get_entries_dropdown($entry_id) {
 		'posts_per_page' => 100,
 	);
 	
-	$the_query = new WP_Query($args);
+	$forms = wpforms()->form->get('', $args);
+	
 	$entry_options = "";
 	
-	if ( $the_query->have_posts() ) {
-		while ( $the_query->have_posts() ) {
-			$the_query->the_post();
-			
-			$selected = '';
-			if ($entry_id == get_the_ID() ) {
-				$selected .= " selected";
-			}
-			
-			$entry_options .= sprintf("<option value='%s'%s>%s</option>\n", get_the_ID(), $selected, get_the_title() );
+	foreach ($forms as $form){
+		
+		$selected = '';
+		if ($entry_id == get_the_ID() ) {
+			$selected .= " selected='selected'";
 		}
+		
+		$entry_options .= sprintf("<option value='%s'%s>%s</option>\n", $form['id'], $selected, $form['name']) );
+		
 	}
-	wp_reset_postdata();
 	
 	echo $entry_options;
 }
