@@ -1,7 +1,7 @@
 <?php
 /**
- * @package Pick_Giveaway_Winner
- * @version 1.3
+ * @package Pick_Giveaway_Winner_For_WPForms
+ * @version 1.0
  */
 /*
 Plugin Name: Pick Giveaway Winner for WPForms
@@ -29,14 +29,27 @@ License: GPL2
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-add_action('admin_menu', 'pgw_menu');
+add_action('admin_init', 'pgw_init', 1000);
 
+function pgw_init(){
+	add_filter('wpforms_tools_views', 'pgw_menu', 10, 1);
+	add_action('wpforms_tools_display_tab_giveaway', 'pgw_options');
+}
+
+function pgw_menu($tabs){
+	$tabs[] = esc_html__( 'Giveaway Winner', 'wpforms' ) => array( 'giveaway' );
+	var_dump($tabs);
+	return $tabs;
+}
+
+/*
+add_action('admin_menu', 'pgw_menu');
 function pgw_menu() {
 	add_submenu_page('admin.php?page=wpforms-overview', 'Pick Giveaway Winner Options', 'Pick Giveaway Winner', 'manage_options', 'pick-giveaway-winner', 'pgw_options');
 }
-
+*/
 function pgw_options() {
-	global $wpdb;
+	//global $wpdb;
 	
 	if (!current_user_can('manage_options'))  {
 		wp_die( __('You do not have sufficient permissions to access this page.') );
@@ -99,8 +112,8 @@ function pgw_options() {
 	}
 
 ?>
-  <div class="wrap">
-  	<h2>Pick Giveaway Winner</h2>
+  <div class="wpforms-setting-row tools">
+  	<h3>Pick Giveaway Winner</h3>
   	<p>This plugin allows you to randomly select a winner or winners from the entries of a WPForm.</p>
   	
   	<form name="pgw_form" id="pgw_form" action="" method="post">
@@ -142,7 +155,7 @@ function pgw_get_forms_dropdown($entry_id) {
 			$selected .= " selected='selected'";
 		}
 		
-		$entry_options .= sprintf("<option value='%s'%s>%s</option>\n", $form['id'], $selected, $form['name']) );
+		$entry_options .= sprintf("<option value='%s'%s>%s</option>\n", $form['id'], $selected, $form['name']);
 		
 	}
 	
