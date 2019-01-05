@@ -29,7 +29,7 @@ License: GPL2
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-add_action('admin_init', 'pgw_init', 1000);
+add_action('admin_menu', 'pgw_init', 1000);
 
 function pgw_init(){
 	add_filter('wpforms_tools_views', 'pgw_menu', 10, 1);
@@ -37,8 +37,8 @@ function pgw_init(){
 }
 
 function pgw_menu($tabs){
-	$tabs[] = esc_html__( 'Giveaway Winner', 'wpforms' ) => array( 'giveaway' );
-	var_dump($tabs);
+	$key = esc_html__( 'Giveaway Winner', 'wpforms' );
+	$tabs[$key] = array( 'giveaway' );
 	return $tabs;
 }
 
@@ -56,10 +56,10 @@ function pgw_options() {
 	}
 
 	// If someone submitted the form, select the giveaway winners
-	if( is_numeric($_POST['pgw-entry-id']) && is_numeric($_POST['pgw-num-winners']) ) {
+	if( !empty($_POST['pgw-entry-id']) && is_numeric($_POST['pgw-entry-id']) &&
+			!empty($_POST['pgw-num-winners']) && is_numeric($_POST['pgw-num-winners']) ) {
 
 		// Get the winning form entries from the selected form
-		
 		$form = wpforms()->form->get( absint( $_POST['pgw-entry-id'] ) );
 		if ( empty( $form ) ) {
 			return;
@@ -67,8 +67,18 @@ function pgw_options() {
 		
 		$form_data = !empty( $form->post_content ) ? wpforms_decode( $form->post_content ) : '';
 		
-		//$winners = $wpdb->get_results($wpdb->prepare("SELECT fields FROM $wpdb->wpforms_entries WHERE form_id = %d ORDER BY RAND() LIMIT %d", $_POST['pgw-entry-id'], $_POST['pgw-num-winners']));
-		$entries   = wpforms()->entry->get_entries( array( 'form_id' => absint( $_POST['pgw-entry-id'] ), 'number' => $_POST['pgw-num-winners'], 'order' => 'ASC', 'orderby' => 'rand' ) );
+		var $entry_args = array( 
+			'form_id' => absint( $_POST['pgw-entry-id'] ), 
+			'number' => $_POST['pgw-num-winners'], 
+			'order' => 'ASC', 
+			'orderby' => 'rand' 
+		);
+		
+		if (!empty($_POST['pgw-giveaway-number']) && is_numeric($_POST['pgw-giveaway-number'])) {
+			$entry_args['filter'] = $_POST['pgw-giveaway-number'];
+		}
+		
+		$entries = wpforms()->entry->get_entries( $entry_args );
 			
 		$winners_text="";
 		$count = 1;
@@ -90,7 +100,6 @@ function pgw_options() {
 		}	
 
 		// Get title of form
-		//$winning_post = $wpdb->get_results($wpdb->prepare("SELECT * FROM $wpdb->posts WHERE ID = %d", $_POST['pgw-entry-id']));
 		$form_title = $form_data['title']; //Not sure about this.
 
 	// Put an settings updated message on the screen
@@ -103,13 +112,15 @@ function pgw_options() {
 
 
 	// Check posted variables to be sure they are numbers. No hacking!
-	if (is_numeric($_POST['pgw-entry-id'])) {
+	if (!empty($_POST['pgw-entry-id']) && is_numeric($_POST['pgw-entry-id'])) {
 		$saved_entry_id = $_POST['pgw-entry-id'];
 	}
+	else $saved_entry_id = null;
 	
-	if (is_numeric($_POST['pgw-num-winners'])) {
+	if (!empty($_POST['pgw-num-winners']) && is_numeric($_POST['pgw-num-winners'])) {
 		$saved_num_winners = $_POST['pgw-num-winners'];
 	}
+	else $saved_num_winners = null;
 
 ?>
   <div class="wpforms-setting-row tools">
@@ -117,49 +128,78 @@ function pgw_options() {
   	<p>This plugin allows you to randomly select a winner or winners from the entries of a WPForm.</p>
   	
   	<form name="pgw_form" id="pgw_form" action="" method="post">
-		<p><label>Select Form:</label>
-			<select name="pgw-entry-id">
-				<?php pgw_get_forms_dropdown($saved_entry_id); ?>
-			</select></p>
-			
-		<p><label>How many winners?</label>
-			<select name="pgw-num-winners">
-				<?php pgw_get_number_winners_dropdown($saved_num_winners); ?>
-			</select>
-		</p>
-		<p><input type="submit" value="Pick winners!"></p>
+			<p>
+				<?php echo pgw_get_forms_dropdown($saved_entry_id); ?>
+			</p>
+				
+			<p><label>How many winners?</label>
+				<select name="pgw-num-winners">
+					<?php echo pgw_get_number_winners_dropdown($saved_num_winners); ?>
+				</select>
+			</p>
+			<p><input type="submit" value="Pick winners!"></p>
   	</form>
   </div>
 <?php 
 }
 
 /* Prints dropdown list of all forms */
-function pgw_get_forms_dropdown($entry_id) {
-	
-	$args = array(
-		'post_status' => 'publish',
-		'post_type' => 'post',
-		'orderby' => 'date',
-		'order' => 'DESC',
-		'posts_per_page' => 100,
-	);
-	
-	$forms = wpforms()->form->get('', $args);
-	
-	$entry_options = "";
-	
-	foreach ($forms as $form){
+function pgw_get_forms_dropdown($sel_entry_id) {
+
+	$forms = wpforms()->form->get();
+
+	$entry_options = '<label>Select Form:</label>
+		<select name="pgw-entry-id" id="pgw-entry-id">';
 		
-		$selected = '';
-		if ($entry_id == get_the_ID() ) {
-			$selected .= " selected='selected'";
-		}
-		
-		$entry_options .= sprintf("<option value='%s'%s>%s</option>\n", $form['id'], $selected, $form['name']);
-		
+	$fields = array();
+	foreach ( $forms as $form ){
+						
+			$selected = '';
+			if ($sel_entry_id == $form->ID ) {
+				$selected .= " selected";
+			}
+			
+			$entry_options .= sprintf("<option value='%s'%s>%s</option>\n", $form->ID, $selected, $form->post_title );
+			$form_data = !empty( $form->post_content ) ? wpforms_decode( $form->post_content ) : '';
+			$fields[$form->ID] = $form_data['fields'];
 	}
 	
-	echo $entry_options;
+	$entry_options .= '</select>';
+	
+	/** TODO:
+	 * Eventually this should use some of the code below to dynamically pull all form 
+	 * fields from the selected form and allow filtering by any given field. Writing
+	 * this part of the code was out of scope and unnecessary for our project, so 
+	 * instead the only field we need to filter by is hard coded below. 
+	 * I don't love doing this, but it's necessary to keep project in scope.
+	 * -Jordan
+	 */
+	
+	$entry_options .= "<label>Select a giveway:</label><select name='pgw-giveaway-number'>
+	<option value='1'>Giveaway #1</option>
+	<option value='2'>Giveaway #2</option>
+	</select>";
+	
+	/** Partly written dynamic field filtering code commented out below **/
+	
+	/*
+	$entry_options .= '<a href="javascript:pgw_show_filters();"><small><em>filter by form field?</em></small></a>';
+	$entry_options .= '<div id="pgw-filters"></div>';
+	$entry_options .= '<script>$form_fields = ' . json_encode($fields) . ';
+	function pgw_show_filters(){
+		var $form_id = jQuery("#pgw-entry-id").val();
+		jQuery.each( $form_fields[$form_id], function( key, field ) {
+  		if (field->type == "checkbox"){
+				jQuery("#pgw-filters").append("<select name=\"filter[\'" +  + "\']\"> <option></option> </select>");
+			}
+		});
+	}
+	</script>';
+	*/
+	
+	//$entry_options .= print_r($forms, true); ///DEBUG
+	
+	return $entry_options;
 }
 
 /* Prints dropdown list of number of winners*/
@@ -174,6 +214,6 @@ function pgw_get_number_winners_dropdown($num_winners) {
 		$num_winner_options .= sprintf("<option%s>%s</option>\n", $selected, $i);
 	}
 	
-	echo $num_winner_options;
+	return $num_winner_options;
 }
 ?>
